@@ -1,25 +1,8 @@
-﻿#$ComputerName = 'STP3323224'
-#$ComputerName = 'MAR1112270' # Direcotrs device
-#$ComputerName = 'STP3322255' #John Grams
-#$Computername = 'STP3326153' # Nate
-#$ComputerName = 'STP3323224' # Teh Steve
-#$ComputerName = 'Stp3327191' # Tria
-#$ComputerName = 'STP3326154' # Aric
-#$Computername = 'STP3325414' #Jagdeep
-#$computername = 'STP3325811' # me
-#$ComputerName = 'STP8001693' # Ken Jensen
-#$ComputerName = 'MAP8003282' # Jeff Lande
-#$computername = 'STP8002524' # Joe Gardner
-#$computername = 'Ker1046777' # Bolk
-#$computername = 'STP8002386' # Luke
-#'STP8001693','STP3323224','STP8002524'
-
+﻿
 
 $YourMom = ((New-Guid).Guid.split('-')[0])
 $TargetLaptops = Get-Content -path "C:\TEMP\Win10Laptops.csv"
 
-
-#'STP8001693','STP3323224','STP8002524'
 $TargetLaptops | % {Invoke-Command -ComputerName $_ -SessionOption (New-PSSessionOption -NoMachineProfile) -ScriptBlock {
 
         #############
