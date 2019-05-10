@@ -1,0 +1,53 @@
+AdvertID                 : 
+CompletionState          : Failure
+ContentAccessRetryCount  : 0
+ContentID                : CM200BEB
+ContentRequestGuid       : {00000000-0000-0000-0000-000000000000}
+ContentType              : 0
+ContentVersion           : 
+DependeePolicyExists     : True
+DependencyCheckEvaluated : False
+DisableMomAlerts         : False
+DownloadStartedNotified  : False
+ExecutionContextTempPath : C:\WINDOWS\TEMP\
+IgnoreRunRerunFlags      : False
+IsAdminContext           : True
+LastStatusMessageID      : 1073751859
+Locations                : {}
+MIFChecking              : True
+MIFFileName              : 
+MIFPackageName           : McAfee Suite Q1 2018 Install (Revised)
+MIFPackagePublisher      : 
+MIFPackageVersion        : 
+MTCHandle                : {AE3C2720-F94D-4889-9A90-473486BB1FCD}
+MTCTaskPriority          : 20
+NextRetryTime            : 12/31/1969 12:00:00 PM
+OptionalAdvertisements   : {CM2202AB}
+OwnerOfMTCTask           : True
+ProcessCreationTimeHigh  : 0
+ProcessCreationTimeLow   : 0
+ProcessID                : 0
+ProgramExitCode          : 0
+ProgramID                : *
+ProgramReboot            : False
+ReceivedTime             : 3/1/2018 6:41:41 AM
+ReferenceCount           : 1
+RequestID                : ae3c2720-f94d-4889-9a90-473486bb1fcd
+RetryCount               : 0
+RetryInterval            : 
+RunInQuietMode           : True
+RunningState             : NotifyExecution
+RunOnCompletion          : True
+ScheduleType             : 
+SDKCallerId              : 
+State                    : Completed
+SuspendReboot            : False
+TargetUser               : S-1-5-21-2724113797-4241170016-2566783980-770418
+TaskPauseReason          : 0
+TSStep                   : False
+UserScheduled            : False
+TS_ContentRequestGuid    : {374bd53a-279d-4bd4-acb6-36ba858d1da4, 9ca874dc-a7c9-41c4-add2-320b2cef254f, 7a6618a7-d9fc-4aa7-bc3e-11ade429f38b, 1137694d-1335-4dd3-965d-655b10d29cec...}
+TS_MemberPackageID       : {CM200BAA, CM200BAA, CM200BAA, Content_38319b49-eae3-48c8-b4b9-d8af2260afd7...}
+TS_MemberPackageVersion  : {4, 4, 4, 1...}
+TS_MemberProgramID       : {TS Final, TS Initial, TS Status, ScopeId_E5D6EF33-13ED-4746-B53F-F50165723E29/Application_5aeef9b5-8125-44bd-a7df-adee0f89ff98...}
+PSComputerName           : 
