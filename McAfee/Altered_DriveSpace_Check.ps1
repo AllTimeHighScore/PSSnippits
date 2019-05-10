@@ -1,6 +1,6 @@
 ﻿#############
 # - Check drive space
-# - I need to revisit this script I'm not a terribly big fan of it
+# - I need to revisit this script, I'm not a terribly big fan of it
 #############
 
 #Check all drives 1 by 1 for required disk space
