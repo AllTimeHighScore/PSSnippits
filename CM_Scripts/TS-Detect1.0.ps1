@@ -2,7 +2,7 @@
 
 <#This was just a test for a much more involved script#>
 
-$TaskSequenceFlag = (get-itemproperty -path HKLM:\SOFTWARE\BSC\TaskSequences -Name Running -ErrorAction SilentlyContinue).Running
+$TaskSequenceFlag = (get-itemproperty -path HKLM:\SOFTWARE\<CUSTOMKEY>\TaskSequences -Name Running -ErrorAction SilentlyContinue).Running
 $TaskSequenceService = (get-service -Name smstsmgr).status
 
 if (($TaskSequenceFlag -eq '1') -and ($TaskSequenceService -eq 'running')){
