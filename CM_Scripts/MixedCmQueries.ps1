@@ -1,6 +1,6 @@
 ﻿$Packages = get-wmiobject -query "SELECT * FROM CCM_SoftwareDistribution" -namespace "root\ccm\policy\machine\actualconfig"
 $Apps = $null
-#($Packages | Where-Object {$_.PKG_Name -match "EXP_PKG_BSC_TaskSequenceToolKit_1.0_PKG_All"}).PKG_Name
+#($Packages | Where-Object {$_.PKG_Name -match "KEVINTEST_TaskSequenceToolKit_1.0_PKG_All"}).PKG_Name
 #($Packages | Where-Object {$_.OptionalAdvertisements -match "CM220263"}).OptionalAdvertisements
 $Selected = $Packages | Where-Object {$_.ADV_AdvertisementID -match "CM220263"}
 $MemberProgs = $Selected.TS_References
@@ -10,11 +10,11 @@ $Apps = ($MemberProgs |
         Get-Unique).where({$_ -match "Application_"},'SkipUntil')
 $Apps
 #.where({$_ -match "Application_"},'SkipUntil')
-#ADV_AdvertisementID = CM220263
-#PKG_PackageID = CM200B63
+#ADV_AdvertisementID = CM123456
+#PKG_PackageID = CM789123
 
-#OptionalAdvertisements   : {CM220263}
-#ContentID                : CM200ABD
+#OptionalAdvertisements   : {CM123456}
+#ContentID                : CM789123
 
 
 "ADV Run Notification = $($Selected.ADV_ADF_RunNotification)"
