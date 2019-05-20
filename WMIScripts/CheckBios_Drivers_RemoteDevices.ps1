@@ -1,4 +1,7 @@
-﻿
+﻿<#
+    This script was made to help find high CPU issues that were later attributed to 
+    The Conexant driver on a few different HP Laptop models, namels 1030 G2 and 840 G5
+#>
 
 $YourMom = ((New-Guid).Guid.split('-')[0])
 $TargetLaptops = Get-Content -path "C:\TEMP\Win10Laptops.csv"

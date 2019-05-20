@@ -77,82 +77,88 @@ $PCList | ForEach-Object {
     #ScriptBlock is the script that will be triggered by the job associated with the process. 
     #This is referenced in the "ScriptBlock" parameter of the Start-Job cmdlet
     $ScriptBlock = {
+
+        ########### For Testing for more advanced console output. ############
         #$VerbosePreference='continue'
+
         # Assign $_ to a var with the "using" variable so we can pull external variables into this scope
         $Comp = $using:_
         $Copy = $using:Media
+        #$ResultFile = $using:Logfile
         $ResultFile = $using:PostOutFile
         $Seconds2Wait = $using:PauseDuration
 
         $OSName = "Unknown"
         $KBInspection = $false
         $UpdateComplete = 'Unverified'
-        $Access = $true
-        $FileCopied = $true
         $OkayToProceed = $null
 
         if (Test-Connection -ComputerName $Comp -Count 3 -ErrorAction SilentlyContinue){
 
             #region - Gather system info
- 
+
             try {
-                Write-Verbose -Message "Attempting to conect to WMI on $comp"
+                Write-Verbose -Message "$($Comp): Attempting to establish WMI connection"
                 $KBInspection = (Get-WmiObject -ComputerName $Comp -Class Win32_QuickFixEngineering -ea Stop | Where-Object {$_.hotfixid -match 'kb4500331'})
                 $WMIConnects = $true
                 #If access is denied it will hang PS at an invisible login message
-                Write-Verbose -message "Checking Sysinfo"
+                $Access = $true
+                Write-Verbose -message "$($Comp): Checking Sysinfo"
 
-                #I would do this in WMi, but later... later...
-                $OSLines = systeminfo /S $Comp
-                if ($OSLines -match "Error"){
-                    Write-Verbose -Message "Sysinfo had an error - checking reg keys."
-                    $OSName = (& reg query "\\$Comp\HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName 2>&1)
-                    $OSspLevel = (& reg query "\\$Comp\HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CSDVersion 2>&1)
+                #rely on the same try block
+                $OSName = Get-WmiObject -ComputerName $Comp -Class Win32_OperatingSystem -ea Stop
 
-                    if (($OSName -match "Access is Denied") -or ($OSspLevel -match "Access is Denied")){
-                        "$Comp is not allowing access and cannot be managed by this script (or at least this user)." | Out-File -FilePath $ResultFile -Append -Force
-                        "****************************************" | Out-File -FilePath $ResultFile -Append -Force
-                        $Access = $false
+                if (!$OSName){
+
+                    #Sometimes the WMI return didn't parse in testing.
+                    $OSLines = systeminfo /S $Comp
+                    #Sysinfo sometimes throws odd errors. i hope we've now seen them all...
+                    if ($OSLines -match "Error|Invalid"){
+                        #Try to get the info from Reg then.
+                        Write-Verbose -Message "$($Comp): Sysinfo had an error - checking reg keys."
+                        $OSName = (& reg query "\\$Comp\HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName 2>&1)
+
+                        if ($OSName -match "Access is Denied"){
+                            "$Comp is not allowing access and cannot be managed by this script (or at least this user)." | Out-File -FilePath $ResultFile -Append -Force
+                            $Access = $false
+                        }
                     }
-                }
-                #Try to get the info from Reg then.
-                else {
-                    $OSName = $OSLines -match "OS Name:"
-                    $OSspLevel = $OSLines -match "OS Version"
+                    else {
+                        $OSName = $OSLines -match "OS Name:"
+                    }
                 }
 
                 if (($OSLines -match 'kb4500331') -or $KBInspection){
-                    "The patch is already installed on $Comp" | Out-File -FilePath $ResultFile -Append -Force
-                    "$Comp = Complete"  | Out-File -FilePath $ResultFile -Append -Force
+                    Write-verbose -message "$($Comp): Compliant - The patch is already installed on this device" #| Out-File -FilePath $ResultFile -Append -Force
                     $UpdateComplete = 'Verified'
                 }
 
             }
             catch [System.UnauthorizedAccessException]{
-                "Access to $Comp is denied" | Out-File -FilePath $ResultFile -Append -Force
+                "$($Comp): Access is denied" | Out-File -FilePath $ResultFile -Append -Force
                 $Access = $false
             }
             catch {
-                "WMI May be corrupt, expect other issues. $($_.exception.message)" | Out-File -FilePath $ResultFile -Append -Force
+                "$($Comp): WMI May be corrupt, expect other issues. $($_.exception.message)" | Out-File -FilePath $ResultFile -Append -Force
                 $WMIConnects = $false
             }
             #endregion - Gather system info
 
             #region - Check if OS is okay to be patched
-            "$Comp is $OSName is at $OSspLevel" | Out-File -FilePath $ResultFile -Append -Force
+            #"WMIConnected = $WMIConnects" | Out-File -FilePath $ResultFile -Append -Force
+            #"$Comp is $OSName" | Out-File -FilePath $ResultFile -Append -Force
             if ($OSName -notmatch "Windows XP|2003"){
-
-                "$Comp is not the target OS. The Script will not run on this box." | Out-File -FilePath $ResultFile -Append -Force
-                "$Comp = $OSName - $OSspLevel" | Out-File -FilePath $ResultFile -Append -Force
-                "****************************************" | Out-File -FilePath $ResultFile -Append -Force
+                #Log Failure
+                "$($Comp): Device is not the target OS ($OSName), the script will not run on this box." | Out-File -FilePath $ResultFile -Append -Force
                 $OkayToProceed = $false
             }
             elseif (($OSLines -match "RPC") -or ($OSName -match "ERROR: Invalid syntax")){
                 $OkayToProceed = $true
-                "$Comp is out of sorts. We'll try this anyway. Don't expect much" | Out-File -FilePath $ResultFile -Append -Force
+                Write-verbose -message "$($Comp): Device may be in a bad state. Will attempt update regardless. (Don't expect much.)"
+                "$($Comp): Device may be in a bad state. Will attempt update regardless. (Don't expect much.)" | Out-File -FilePath $ResultFile -Append -Force
             }
             else {
-                "Proper OS Detected. Proceeding" | Out-File -FilePath $ResultFile -Append -Force
+                Write-verbose -Message "$($Comp): Proper OS Detected ($OSName). Proceeding" #| Out-File -FilePath $ResultFile -Append -Force
                 $OkayToProceed = $true
             }
             #region - Check if OS is okay to be patched
@@ -163,18 +169,21 @@ $PCList | ForEach-Object {
             #"Access: $Access" | Out-File -FilePath $ResultFile -Append -Force
 
             if (($UpdateComplete -eq 'Unverified') -and ($OkayToProceed -eq $true) -and ($Access -eq $true)){
-                "Passed three required Checks" | Out-File -FilePath $ResultFile -Append -Force
+                Write-verbose -message "$($Comp): Passed three required Checks"
 
                 $RunDate = (Get-Date).ToString("ddMMyyyymmss")
                 if ($OSName -match "(Server 2003|XP).*x64"){
+                    [version]$Version = '5.2.3790.6787'
                     $File2Copy = 'windowsserver2003-kb4500331-x64-custom-enu_e2fd240c402134839cfa22227b11a5ec80ddafcf.exe'
-                    $Task = "C:\Windows\Temp\windowsserver2003-kb4500331-x64-custom-enu_e2fd240c402134839cfa22227b11a5ec80ddafcf.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
+                    $Task = "C:\Windows\Temp\KB4500331\windowsserver2003-kb4500331-x64-custom-enu_e2fd240c402134839cfa22227b11a5ec80ddafcf.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
                 elseif ($OSName -match "Server 2003"){
+                    [version]$Version = '5.2.3790.6787'
                     $File2Copy = 'windowsserver2003-kb4500331-x86-custom-enu_62d416d73d413b590df86224b32a52e56087d4c0.exe'
                     $Task = "C:\Windows\Temp\KB4500331\windowsserver2003-kb4500331-x86-custom-enu_62d416d73d413b590df86224b32a52e56087d4c0.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
                 elseif ($OSName -match 'Windows XP'){
+                    [version]$Version = '5.2.3790.6787'
                     $File2Copy = 'windowsxp-kb4500331-x86-custom-enu_d7206aca53552fececf72a3dee93eb2da0421188.exe'
                     $Task = "C:\Windows\Temp\KB4500331\windowsxp-kb4500331-x86-custom-enu_d7206aca53552fececf72a3dee93eb2da0421188.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
@@ -182,47 +191,105 @@ $PCList | ForEach-Object {
                 #Start attempting to drop the task
 
                 #region - Copy files to local device
-                    #################################
-                    #
-                    # - Copy the files to the target device
-                    #
-                    #################################
-                
-                try {
-                    Write-Verbose -Message "Attempting to copy files."
-                    "Attempting to copy files: $("$Copy\$File2Copy")" | Out-File -FilePath $ResultFile -Append -Force
-                    [string](& robocopy $Copy "\\$Comp\C$\Windows\Temp\KB4500331" $File2Copy /S /MT:50 /r:30 /w:05 2>&1) | Out-String -OutVariable CopyFiles | Out-File -FilePath $ResultFile -Append -Force
 
-                    if ($CopyFiles -match "Invalid Drive"){
-                        Write-Warning -Message "Error: Cannot access the drive. Listing this device as a failure."
-                        "ERROR: Cannot access the drive. Listing this device as a failure." | Out-File -FilePath $ResultFile -Append -Force
-                        "****************************************" | Out-File -FilePath $ResultFile -Append -Force
+                    <#
+                        #################################
+                        #
+                        # - Copy the files to the target device
+                        # - Something in the copy section is still pumping out to the log file.
+                        #       I have mixed feeling about that.
+                        #
+                        #################################
+                    #>
+
+                try {
+                    $FileCopied = $true
+                    Write-Verbose -Message "$($Comp): Attempting to copy files: $("$Copy\$File2Copy")" #| Out-File -FilePath $ResultFile -Append -Force
+                    #[string](& robocopy $Copy "\\$Comp\C$\Windows\Temp\KB4500331" $File2Copy /S /MT:50 /r:30 /w:05 2>&1) | Out-String -OutVariable CopyFiles
+                    $CopyFiles = (& robocopy $Copy "\\$Comp\C$\Windows\Temp\KB4500331" $File2Copy /S /MT:50 /r:30 /w:05 2>&1)
+                    Write-Verbose -Message "$CopyFiles"
+
+                    if ($CopyFiles -match "Invalid Drive|ERROR"){
+                        Write-Warning -Message "$($Comp):Error - Cannot access the drive. Listing this device as a failure."
+                        "$($Comp):Error -  Cannot access the drive. Listing this device as a failure: $Comp" | Out-File -FilePath $ResultFile -Append -Force
+                        "$CopyFiles" | Out-File -FilePath $ResultFile -Append -Force
                         $FileCopied = $false
                     }
 
-                    Write-Verbose -message "Waiting for $Seconds2Wait for the patch to copy over."
+                    Write-Verbose -message "$($Comp): Waiting for $Seconds2Wait for the patch to copy over."
                     Start-Sleep -Seconds $Seconds2Wait
                 }
                 catch {
-                    "Failed to copy files: $($_.Exception.Message)" | Out-File -FilePath $ResultFile -Append -Force
+                    "$CopyFiles" | Out-File -FilePath $ResultFile -Append -Force
+                    "$($Comp):Error - Failed to copy files: $($_.Exception.Message)" | Out-File -FilePath $ResultFile -Append -Force
                     $FileCopied = $false
                 }
                 #endregion - Copy files to local device
 
                 #region - Run the update
                 if ($FileCopied -eq $true){
-                    #Write-verbose -message "$Task"
-                    #Write-Verbose -message "About to run the update" | Out-File -FilePath $ResultFile -Append -Force
-                    $process = ([WMICLASS]"\\$comp\ROOT\CIMV2:win32_process").Create("cmd.exe /c $Task")
 
-                    foreach ($Num in 1..50){
-                        if ((Get-WmiObject -ComputerName 'tsww2k3td40811' -Class Win32_QuickFixEngineering | Where-Object {$_.hotfixid -match 'kb4500331'})){
-                            $UpdateComplete = "Verified"
-                            Write-Verbose -message "Update verified, Breaking from computer: $Comp"
-                            break
-                        }
-                        Start-Sleep -Seconds 2
+                    #Install the patch
+                    try {
+                        $proc = Invoke-WmiMethod -ComputerName $Comp -Class Win32_Process -Name Create -ArgumentList "cmd.exe /c $Task" -ErrorAction Stop
+
+                        #$proc = ([WMICLASS]"\\$Comp\ROOT\CIMV2:win32_process").Create("cmd.exe /c $Task")
+                        Write-Verbose -Message "$($Comp): Patch applied: $proc"
+                        $UpdateComplete = "PendingVerification"
                     }
+                    catch {
+                        Write-Warning -Message "$($Comp):Error - Starting patch installation process: $Proc"
+                        "$($Comp):Error - Starting patch installation process: $($_.Exception.Message)" | Out-File -FilePath $ResultFile -Append -Force
+                    }
+
+                    #Check if patch installed
+                    foreach ($Num in 1..20){
+                        try {
+                            if ($num -in 1,5,10,15,20){
+                                Write-Warning -Message "$($Comp):...Checking WMI..."
+                            }
+
+                            if ((Get-WmiObject -ComputerName $Comp -Class Win32_QuickFixEngineering -ea SilentlyContinue | Where-Object {$_.hotfixid -match 'kb4500331'})){
+                                $UpdateComplete = "Verified"
+                                Write-Verbose -message "$($Comp):Success - Update verified, breaking from this device's session"
+                                break
+                            }
+
+                            #Check the file version directly if we've hit the max retries, should probably move this outside the other try block.
+                            if ($Num -eq 20){
+                                Write-Warning -Message "$($Comp): Could not verify via Win32_QuickFixEngineering"
+
+                                #Check the file version via WMI
+                                $File = Get-WmiObject -Computername $Comp -Query "SELECT * FROM CIM_DataFile WHERE Name = 'C:\\Windows\\System32\\drivers\\termdd.sys'" -ErrorAction Stop
+                                try {
+                                    if ([version](($File.version).split(' ')[0]) -ge $Version){
+                                        $UpdateComplete = "Verified"
+                                    }
+                                    else {$UpdateComplete = "RebootToVerify"}
+                                }
+                                catch [System.Management.Automation.RuntimeException]{
+                                    Write-Warning -Message "$($Comp): ($($File.Version)) did not meet expected format."
+                                    $UpdateComplete = "RebootToVerify"
+                                }
+                                catch {
+                                    Write-Warning -Message "$($Comp): Unexpected error - $($_.Exception.Message)."
+                                    $UpdateComplete = "RebootToVerify"
+                                }
+                            }
+                        }
+                        catch {
+                            Write-Warning -message "$($Comp):Error On Attempt $Num - Checking patch installation process: $($_.Exception.Message)"
+                            if ($Num -eq 50){
+                                "$($Comp):Error - Checking patch installation process: $($_.Exception.Message)" | Out-File -FilePath $ResultFile -Append -Force
+                            }
+
+                            #Declare this each time. It looks a little different so I can tell where the variable data was populated by. Not the best way, but whatever...
+                            $UpdateComplete = "UnVerified - $($_.Exception.Message)"
+                        }
+                        #pause briefly before the next attempt
+                        Start-Sleep -Seconds 5
+                    }
+
                 }
 
                 #endregion - Run the update
@@ -230,8 +297,8 @@ $PCList | ForEach-Object {
 
         }#if (Test-Connection -ComputerName $Comp -Count 3 -ErrorAction SilentlyContinue){
         else {
-            Write-Warning -Message "Could not contact $Comp"
-            "Error: Could not contact $Comp" | Out-File -FilePath $ResultFile -Append -Force
+            Write-Warning -Message "$($Comp):Could not contact device!"
+            "$($Comp):Error - Could not contact device!" | Out-File -FilePath $ResultFile -Append -Force
         }
 
         [pscustomobject]@{
@@ -243,7 +310,6 @@ $PCList | ForEach-Object {
             Okay2Patch = $OkayToProceed
             PatchApplied = $UpdateComplete
         }
-
 
     }#ScriptBlock block
         
