@@ -43,10 +43,16 @@ $LogFile = $null
 $MaxConcurrentJobs = 10
 
 # Set the max number of hours we want each job to run before we give up and kill it
-$MaxRunHours = 120
+#$MaxRunHours = 120
+
+# Set the max number of minutes we want each job to run before we give up and kill it
+$MaxRunMinutes = 30
 
 #logFile
 $PostOutFile = "$PSScriptRoot\kb4500331_Patch_Install_Results_$((Get-Date).ToString("yyyymmddhhmmss")).log"
+
+#Json - For easier parcing
+$PostOutJson = "$PSScriptRoot\kb4500331_Patch_Install_Results_$((Get-Date).ToString("yyyymmddhhmmss")).JSON"
 
 #Device list
 $TargetSource = "$PSScriptRoot\TargetDevices.txt"
@@ -99,20 +105,34 @@ $PCList | ForEach-Object {
 
             try {
                 Write-Verbose -Message "$($Comp): Attempting to establish WMI connection"
-                $KBInspection = (Get-WmiObject -ComputerName $Comp -Class Win32_QuickFixEngineering -ea Stop | Where-Object {$_.hotfixid -match 'kb4500331'})
-                $WMIConnects = $true
-                #If access is denied it will hang PS at an invisible login message
-                $Access = $true
-                Write-Verbose -message "$($Comp): Checking Sysinfo"
+                #The KB shouldn't be there yet. I just want to give WMI a few chances to connect
+                foreach ($try in 1..10){
+                    if ($KBInspection = (Get-WmiObject -ComputerName $Comp -Class Win32_QuickFixEngineering -ea Stop | Where-Object {$_.hotfixid -match 'kb4500331'})){
+                        break
+                    }
+                    Start-Sleep -Seconds 2
+                }
 
+                $WMIConnects = $true
+                $Access = $true
+
+                Write-Verbose -message "$($Comp): Checking WMI for OS type"
                 #rely on the same try block
-                $OSName = Get-WmiObject -ComputerName $Comp -Class Win32_OperatingSystem -ea Stop
+
+                foreach ($try in 1..10){                
+                    if ($OSData = Get-WmiObject -ComputerName $Comp -Class Win32_OperatingSystem -ea Stop){
+                        $OSName = $OSData.Caption
+                        break
+                    }
+                    Start-Sleep -Seconds 2
+                }
 
                 if (!$OSName){
-
+                    Write-Verbose -message "$($Comp): Checking Sysinfo"
                     #Sometimes the WMI return didn't parse in testing.
+                    #If access is denied Sysinfo will hang PS at an invisible login message, The try catch for WMI should guide us around that.
                     $OSLines = systeminfo /S $Comp
-                    #Sysinfo sometimes throws odd errors. i hope we've now seen them all...
+                    #Sysinfo sometimes throws odd errors. I hope we've now seen them all...
                     if ($OSLines -match "Error|Invalid"){
                         #Try to get the info from Reg then.
                         Write-Verbose -Message "$($Comp): Sysinfo had an error - checking reg keys."
@@ -124,7 +144,7 @@ $PCList | ForEach-Object {
                         }
                     }
                     else {
-                        $OSName = $OSLines -match "OS Name:"
+                        $OSName = ($OSLines -match "OS Name:").split(':').trim()[1]
                     }
                 }
 
@@ -139,7 +159,7 @@ $PCList | ForEach-Object {
                 $Access = $false
             }
             catch {
-                "$($Comp): WMI May be corrupt, expect other issues. $($_.exception.message)" | Out-File -FilePath $ResultFile -Append -Force
+                "$($Comp): WMI May be corrupt, expect other issues. $($_.Exception.GetType().FullName) ^ $($_.exception.message)" | Out-File -FilePath $ResultFile -Append -Force
                 $WMIConnects = $false
             }
             #endregion - Gather system info
@@ -175,17 +195,17 @@ $PCList | ForEach-Object {
                 if ($OSName -match "(Server 2003|XP).*x64"){
                     [version]$Version = '5.2.3790.6787'
                     $File2Copy = 'windowsserver2003-kb4500331-x64-custom-enu_e2fd240c402134839cfa22227b11a5ec80ddafcf.exe'
-                    $Task = "C:\Windows\Temp\KB4500331\windowsserver2003-kb4500331-x64-custom-enu_e2fd240c402134839cfa22227b11a5ec80ddafcf.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
+                    $Task = "C:\Windows\Temp\KB4500331\$File2Copy /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
                 elseif ($OSName -match "Server 2003"){
                     [version]$Version = '5.2.3790.6787'
                     $File2Copy = 'windowsserver2003-kb4500331-x86-custom-enu_62d416d73d413b590df86224b32a52e56087d4c0.exe'
-                    $Task = "C:\Windows\Temp\KB4500331\windowsserver2003-kb4500331-x86-custom-enu_62d416d73d413b590df86224b32a52e56087d4c0.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
+                    $Task = "C:\Windows\Temp\KB4500331\$File2Copy /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
                 elseif ($OSName -match 'Windows XP'){
                     [version]$Version = '5.2.3790.6787'
                     $File2Copy = 'windowsxp-kb4500331-x86-custom-enu_d7206aca53552fececf72a3dee93eb2da0421188.exe'
-                    $Task = "C:\Windows\Temp\KB4500331\windowsxp-kb4500331-x86-custom-enu_d7206aca53552fececf72a3dee93eb2da0421188.exe /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
+                    $Task = "C:\Windows\Temp\KB4500331\$File2Copy /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
 
                 #Start attempting to drop the task
@@ -272,7 +292,7 @@ $PCList | ForEach-Object {
                                     $UpdateComplete = "RebootToVerify"
                                 }
                                 catch {
-                                    Write-Warning -Message "$($Comp): Unexpected error - $($_.Exception.Message)."
+                                    Write-Warning -Message "$($Comp): Unexpected error - $($_.Exception.GetType().FullName) ^ $($_.Exception.Message)."
                                     $UpdateComplete = "RebootToVerify"
                                 }
                             }
@@ -328,7 +348,8 @@ $PCList | ForEach-Object {
         #for longer than the max allocated time, we'll put them into a stopped 
         #state (collect the data later) so we don't get hung up with a full queue
         Get-Job -Name $JobName | Where-Object {$_.State -match 'Running'} | ForEach-Object {
-            if ((Get-Date) -gt (Get-Date ($_.PSBeginTime)).AddHours($MaxRunHours)) {
+            #if ((Get-Date) -gt (Get-Date ($_.PSBeginTime)).AddHours($MaxRunHours)){
+            if ((Get-Date) -gt (Get-Date ($_.PSBeginTime)).AddMinutes($MaxRunMinutes)){
                 Write-Verbose -Message 'Stopping Job...'
                 Stop-Job $_
             }
@@ -359,7 +380,8 @@ while ((Get-Job -Name $JobName -ErrorAction SilentlyContinue | Where-Object {$_.
     #for longer than the max allocated time, we'll put them into a stopped 
     #state (collect the data later) so we don't get hung up with a full queue
     Get-Job -Name $JobName | Where-Object {$_.State -match 'Running'} | ForEach-Object {
-        if ((Get-Date) -gt (Get-Date ($_.PSBeginTime)).AddHours($MaxRunHours)){
+        #if ((Get-Date) -gt (Get-Date ($_.PSBeginTime)).AddHours($MaxRunHours)){
+        if ((Get-Date) -gt (Get-Date ($_.PSBeginTime)).AddMinutes($MaxRunMinutes)){
             Write-Verbose -Message 'Stopping Job...'
             Stop-Job $_ -Verbose
         }
@@ -389,3 +411,5 @@ while ((Get-Job -Name $JobName -ErrorAction SilentlyContinue | Where-Object {$_.
 $Remaining += $PCList | Where-Object {$_ -notin $Output.ComputerName}
 
 $Output | Out-File -FilePath $PostOutFile -Append -Force
+
+$Output | ConvertTo-Json | Out-File -FilePath $PostOutJson -Append -Force
