@@ -336,7 +336,7 @@ $PCList | ForEach-Object {
     #for each job in the list we'll start jobs, up to the max allowed, then wait 
     #for some to stop running, then start more until we're out of jobs to start
     Write-Verbose -Message "Starting job: $JobName"
-    if ($LogFile){Write-WSMLogMessage -Message "$Section Starting job: $JobName" -LogFile $LogFile}
+    "$Section Starting job: $JobName" | Out-File -FilePath $ResultFile -Append -Force
     
     Start-Job -Name $JobName -ScriptBlock $ScriptBlock
     
@@ -365,7 +365,7 @@ $PCList | ForEach-Object {
             $Output += Receive-Job $_ -Verbose
             
             Write-Verbose -Message "Receiving job: $($_.Name)"
-            if ($LogFile){Write-WSMLogMessage -Message "$Section Receiving job: $($_.Name)" -LogFile $LogFile}
+            "$Section Receiving job: $($_.Name)" | Out-File -FilePath $ResultFile -Append -Force
 
             #Remove the job. At the end of the loop all jobs should be cleared
             Remove-Job $_ -Force -Verbose
@@ -396,7 +396,7 @@ while ((Get-Job -Name $JobName -ErrorAction SilentlyContinue | Where-Object {$_.
             $Output += Receive-Job $_ -Verbose
             
             Write-Verbose -Message "Receiving job: $($_.Name)"
-            if ($LogFile){Write-WSMLogMessage -Message "$Section Receiving job: $($_.Name)" -LogFile $LogFile}
+            "$Section Receiving job: $($_.Name)" | Out-File -FilePath $ResultFile -Append -Force
 
             #Remove the job. At the end of the loop all jobs should be cleared
             Remove-Job $_ -Force -Verbose
