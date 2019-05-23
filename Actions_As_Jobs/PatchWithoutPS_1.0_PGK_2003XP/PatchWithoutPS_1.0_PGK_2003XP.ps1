@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Use the WMI Process run method to run MS Patch
+    Use the WMI Process run method to run MS Patch <BlueKeep - KB4500331>
 .DESCRIPTION
     Use the WMI Process run method to get around Application Control and patch vulnerabilities
 .EXAMPLE
@@ -14,7 +14,7 @@
     Author: Van Bogart, Kevin
     Created: 2019-05-17 14:04:47Z
 
-    Created for RDP vulnerability <KB4500331>
+    Created for RDP vulnerability <BlueKeep - KB4500331>
     Created by altering an older script of mine that did this via Scheduled Tasks
 
     ***You must have access to the target devices to run this***
@@ -90,7 +90,6 @@ $PCList | ForEach-Object {
         # Assign $_ to a var with the "using" variable so we can pull external variables into this scope
         $Comp = $using:_
         $Copy = $using:Media
-        #$ResultFile = $using:Logfile
         $ResultFile = $using:PostOutFile
         $Seconds2Wait = $using:PauseDuration
 
@@ -181,7 +180,7 @@ $PCList | ForEach-Object {
                 Write-verbose -Message "$($Comp): Proper OS Detected ($OSName). Proceeding" #| Out-File -FilePath $ResultFile -Append -Force
                 $OkayToProceed = $true
             }
-            #region - Check if OS is okay to be patched
+            #endregion - Check if OS is okay to be patched
 
             #If the update hasn't been found already
             #"UpdateComplete: $UpdateComplete" | Out-File -FilePath $ResultFile -Append -Force
@@ -190,7 +189,8 @@ $PCList | ForEach-Object {
 
             if (($UpdateComplete -eq 'Unverified') -and ($OkayToProceed -eq $true) -and ($Access -eq $true)){
                 Write-verbose -message "$($Comp): Passed three required Checks"
-
+                
+                #region - Match OS with patch media
                 $RunDate = (Get-Date).ToString("ddMMyyyymmss")
                 if ($OSName -match "(Server 2003|XP).*x64"){
                     [version]$Version = '5.2.3790.6787'
@@ -207,6 +207,7 @@ $PCList | ForEach-Object {
                     $File2Copy = 'windowsxp-kb4500331-x86-custom-enu_d7206aca53552fececf72a3dee93eb2da0421188.exe'
                     $Task = "C:\Windows\Temp\KB4500331\$File2Copy /quiet /norestart /log:%windir%\TEMP\kb4500331_Install_$RunDate.log"
                 }
+                #endregion - Match OS with patch media
 
                 #Start attempting to drop the task
 
@@ -337,13 +338,13 @@ $PCList | ForEach-Object {
     #for some to stop running, then start more until we're out of jobs to start
     Write-Verbose -Message "Starting job: $JobName"
     "$Section Starting job: $JobName" | Out-File -FilePath $ResultFile -Append -Force
-    
+
     Start-Job -Name $JobName -ScriptBlock $ScriptBlock
-    
+
     #While the queue is full, we'll sleep 1/4 second and then recheck for open queue slots
     while ((Get-Job -Name $JobName | Where-Object {$_.State -match 'Running'}).Count -ge $MaxConcurrentJobs){
         Start-Sleep -Milliseconds 250
-        
+ 
         #We'll look at all the current jobs and if any of them have been running 
         #for longer than the max allocated time, we'll put them into a stopped 
         #state (collect the data later) so we don't get hung up with a full queue
@@ -363,7 +364,7 @@ $PCList | ForEach-Object {
         if ($_.State -match 'Completed') {
             #Receive the job to collect it's output data
             $Output += Receive-Job $_ -Verbose
-            
+
             Write-Verbose -Message "Receiving job: $($_.Name)"
             "$Section Receiving job: $($_.Name)" | Out-File -FilePath $ResultFile -Append -Force
 
