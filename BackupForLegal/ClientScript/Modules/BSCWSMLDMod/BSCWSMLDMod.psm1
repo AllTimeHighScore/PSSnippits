@@ -41,7 +41,7 @@ function New-WSMRandomDriveLetter {
         .PARAMETER Logfile
             Logfile if one is specified.
         .EXAMPLE
-            New-WSMRandomDriveLetter -Location '\\stpnas08\legalinfo$'
+            New-WSMRandomDriveLetter -Location '\\skywalker\legalinfo'
         .INPUTS
             System.String
         .OUTPUTS
@@ -184,10 +184,10 @@ function Invoke-WSMValidatedCopySingleItems {
             
             $DirEx = @("OneDrive","OneDrive - Boston Scientific","C:\OneDriveTemp","C:\Windows","C:\MSOCache","C:\Quarantine","C:\Program Files", "C:\Program Files (x86)","C:\Oracle","C:\System Volume Information","C:\Config.Msi","C:\ProgramData")
             
-            $Dest = '\\stpnas05\dsm\Public\SuperGuy\TestBackup\TestDest\'
-            $RunLog = '\\stpnas05\dsm\Public\Restricted\VanBogK\Test_SingleCopy.log'
+            $Dest = '\\Vader\Public\SuperGuy\TestBackup\TestDest\'
+            $RunLog = '\\Vader\Public\Restricted\VanBogK\Test_SingleCopy.log'
             Measure-Command -Expression {
-                Invoke-WSMValidatedCopySingleItems -Path 'C:\' -Destination $Dest -Recursive -ExcludeDir $DirEx -ExcludeFile $FileEx -LogLocation '\\stpnas05\dsm\Public\Restricted\VanBogK\TestBackup' -LogFile $RunLog
+                Invoke-WSMValidatedCopySingleItems -Path 'C:\' -Destination $Dest -Recursive -ExcludeDir $DirEx -ExcludeFile $FileEx -LogLocation '\\Vader\Public\Restricted\VanBogK\TestBackup' -LogFile $RunLog
             }
         .INPUTS
             System.String

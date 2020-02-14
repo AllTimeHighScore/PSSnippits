@@ -48,9 +48,14 @@
 #>
 Param (
     #LogFile - File for log messages.
+    [Parameter(Mandatory=$true,
+    ValueFromPipeline=$true)]
+    [ValidateScript({(Get-item -path $_ -ErrorAction SilentlyContinue).Extension -eq '.JSON'})]
+    [string]$LegalSitesFile,
+    
     [Parameter(ValueFromPipelineByPropertyName=$true)]
     [ValidateNotNullOrEmpty()]
-    [String]$LogFile = "$PSScriptRoot\StorageProcess.log",
+    [String]$LogFile = 'StorageProcess.log',
 
     [Parameter(ValueFromPipelineByPropertyName=$true)]
     [ValidateNotNullOrEmpty()]
@@ -132,7 +137,7 @@ process {
 
         #region - Run Invoke-DashBoard
             #$DashParams = @{
-                $LegalSites = (Get-Content -Path "\\stpnas08\legalinfo$\LegalSite.json" -ErrorAction SilentlyContinue | ConvertFrom-Json).Where({$_.Location -ne ''})
+                $LegalSites = (Get-Content -Path $LegalSitesFile -ErrorAction SilentlyContinue | ConvertFrom-Json).Where({$_.Location -ne ''})
                 $DirList = (Get-Content -Path "$PSScriptRoot\Configs\DirectoryExclusions.txt" -ErrorAction SilentlyContinue)
                 $FileList = (Get-Content -Path "$PSScriptRoot\Configs\FileExclusions.txt" -ErrorAction SilentlyContinue)
                 $ProcList = (Get-Content -Path "$PSScriptRoot\Configs\Processes.txt" -ErrorAction SilentlyContinue)

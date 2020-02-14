@@ -88,6 +88,12 @@ param (
     #Disables the splashscreen, which is by default on.
     [switch]$Silent,
 
+    [Parameter(Mandatory=$true,
+    ValueFromPipeline=$true)]
+    [ValidateScript({(Get-item -path $_ -ErrorAction SilentlyContinue).Extension -eq '.JSON'})]
+    [string]$LegalSitesFile,
+
+
     #Set the package version
     [version]$ScriptVersion = '1.0.0.0'
 )
@@ -203,8 +209,8 @@ Begin {
     #region - Add functions without modules
 
     $CompSys = Get-CimInstance -Namespace 'root/cimv2' -ClassName 'Win32_ComputerSystem' -ErrorAction SilentlyContinue
-    $Baseline = (Get-ItemProperty -Path 'HKLM:\Software\BSC\Baseline' -ErrorAction SilentlyContinue)
-    $Company = (Get-ItemProperty -Path 'HKLM:\Software\BSC\Company' -ErrorAction SilentlyContinue)
+    $Baseline = (Get-ItemProperty -Path 'HKLM:\Software\SpecialKey\Baseline' -ErrorAction SilentlyContinue)
+    $Company = (Get-ItemProperty -Path 'HKLM:\Software\SpecialKey\Company' -ErrorAction SilentlyContinue)
     $OS = (Get-CimInstance -Namespace 'root/cimv2' -ClassName 'Win32_OperatingSystem' -ErrorAction SilentlyContinue)
 
     if (!$ParamInput){
@@ -257,7 +263,7 @@ Begin {
     }
 
     # query our primary user data. This should be available on most managed devices.
-    if ( !($PrimaryUserID = (Get-ItemProperty -Path 'HKLM:\SOFTWARE\bsc\NetProfile' -ErrorAction SilentlyContinue).PrimaryUser) ){
+    if ( !($PrimaryUserID = (Get-ItemProperty -Path 'HKLM:\Software\SpecialKey\NetProfile' -ErrorAction SilentlyContinue).PrimaryUser) ){
         #May alter this when I revisit the old code, if there is anything we can do at all about that.
         $PrimaryUserID = 'N/A'
     }
@@ -338,7 +344,7 @@ Begin {
     if (!$ManualDestination){
         # Check the legalsite json to see where the preferred site maybe.
         # More needs to be done here to ensure a valid location has been selected.
-        $LegalJson = Get-Content -Path "\\stpnas08\legalinfo$\LegalSite.json" -ErrorAction Stop | ConvertFrom-Json
+        $LegalJson = Get-Content -Path $LegalSitesFile -ErrorAction Stop | ConvertFrom-Json
 
         if (  ($LegalJson | Where-Object {($_.Site -eq $Config.PreferredSite) -and ($_.Location -in $null,'') }) -or !($Config.PreferredSite) ){
             # try using the site the device is in to figure out where to send the data.
@@ -706,7 +712,7 @@ end {
         }
 
         # Set confirmation location
-        $ConfirmationFileLocation = "\\stpnas01\ISS\TSG\IMAC\GhostImageConfirmation\$($ComputerTXT.Site)"
+        $ConfirmationFileLocation = "\\Whereever!!!"
 
         # Export the confirmation file
         try {
