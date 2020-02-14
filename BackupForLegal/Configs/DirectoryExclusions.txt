@@ -1,0 +1,12 @@
+OneDrive
+OneDrive - Boston Scientific
+C:\OneDriveTemp
+C:\Windows
+C:\MSOCache
+C:\Quarantine
+C:\Program Files
+C:\Program Files (x86)
+C:\Oracle
+C:\System Volume Information
+C:\ProgramData
+Local\Packages

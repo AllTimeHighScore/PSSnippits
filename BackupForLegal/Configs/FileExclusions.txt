@@ -1,0 +1,13 @@
+*.ost
+*.sys
+*.AppX
+*.dat
+*.dmp
+*.exe
+*.dll
+*.mui
+*.svg
+*.url
+*.sol
+UPPS.bin
+BuildInfo.ini
